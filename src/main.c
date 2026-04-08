@@ -251,7 +251,31 @@ int main(int argc, char *argv[]) {
                     }
 
                     cJSON_Delete(args);
+
+                } else if (function_name && strcmp(function_name, "Write") == 0 && args_str) {
+                    cJSON *args = cJSON_Parse(args_str);
+                    const char *file_path =
+                        cJSON_GetStringValue(cJSON_GetObjectItem(args, "file_path"));
+                    const char *content =
+                        cJSON_GetStringValue(cJSON_GetObjectItem(args, "content"));
+
+                    if (file_path && content) {
+                        FILE *file = fopen(file_path, "wb");
+
+                        if (!file) {
+                            fprintf(stderr, "Write: cannot open file: %s\n", file_path);
+                        } else {
+                            fwrite(content, 1, strlen(content), file);
+                            fclose(file);
+                            cJSON *tool_response = cJSON_CreateObject();
+                            cJSON_AddStringToObject(tool_response, "role", "tool");
+                            cJSON_AddStringToObject(tool_response, "tool_call_id", tool_call_id);
+                            cJSON_AddStringToObject(tool_response, "content", "Write successful");
+                            cJSON_AddItemToArray(history_messages, tool_response);
+                        }
+                    }
                 }
+                cJSON_Delete(tool_call);
             }
 
             cJSON_Delete(json);
