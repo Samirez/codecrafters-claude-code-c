@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     cJSON_AddItemToArray(messages, msg);
 
     // add tools to request
-    cJSON *tools = cJSON_AddArrayToObject(req, "tools");
+    cJSON *tools = cJSON_CreateArray();
     cJSON *tool = cJSON_CreateObject();
     cJSON_AddStringToObject(tool, "type", "function");
 
@@ -80,9 +80,10 @@ int main(int argc, char *argv[]) {
     //create conversation history file if it doesn't exist
     cJSON *conversation_history = cJSON_CreateObject();
     cJSON *history_messages = cJSON_AddArrayToObject(conversation_history, "messages");
-    cJSON_AddStringToObject(history_messages, "role", "user");
-    cJSON_AddStringToObject(history_messages, "content", prompt);
-    cJSON_AddItemToArray(history_messages, msg);
+    cJSON *user_msg = cJSON_CreateObject();
+    cJSON_AddStringToObject(user_msg, "role", "user");
+    cJSON_AddStringToObject(user_msg, "content", prompt);
+    cJSON_AddItemToArray(history_messages, user_msg);
 
     char url[512];
     snprintf(url, sizeof(url), "%s/chat/completions", base_url);
@@ -152,123 +153,79 @@ int main(int argc, char *argv[]) {
         cJSON *first = cJSON_GetArrayItem(choices, 0);
         cJSON *message = cJSON_GetObjectItem(first, "message");
         cJSON *tool_calls = cJSON_GetObjectItem(message, "tool_calls");
+        
         cJSON *assistant_msg = cJSON_CreateObject();
         cJSON_AddStringToObject(assistant_msg, "role", "assistant");
         cJSON *content = cJSON_GetObjectItem(message, "content");
         
-        if (content) {
-        cJSON_AddStringToObject(assistant_msg, "content",
+        if (content) 
+        {
+            cJSON_AddStringToObject(assistant_msg, "content",
                                 cJSON_GetStringValue(content));
         }
-        if (tool_calls) {
-        cJSON *tool_calls_copy = cJSON_Duplicate(tool_calls, 1);
-        cJSON_AddItemToObject(assistant_msg, "tool_calls", tool_calls_copy);
+
+        if (tool_calls) 
+        {
+            cJSON *tool_calls_copy = cJSON_Duplicate(tool_calls, 1);
+            cJSON_AddItemToObject(assistant_msg, "tool_calls", tool_calls_copy);
         }
+
         cJSON_AddItemToArray(conversation_history, assistant_msg);
         if (cJSON_IsArray(tool_calls) && cJSON_GetArraySize(tool_calls) > 0) 
         {
-        int num_calls = cJSON_GetArraySize(tool_calls);
-        for (int i = 0; i < num_calls; i++) {
-            cJSON *tool_call = cJSON_GetArrayItem(tool_calls, i);
-            cJSON *tool_call_function = cJSON_GetObjectItem(tool_call, "function");
-            const char *function_name = cJSON_GetStringValue(
-                cJSON_GetObjectItem(tool_call_function, "name"));
-            const char *args_str = cJSON_GetStringValue(
-                cJSON_GetObjectItem(tool_call_function, "arguments"));
-            const char *tool_call_id =
-                cJSON_GetStringValue(cJSON_GetObjectItem(tool_call, "id"));
-            if (function_name && strcmp(function_name, "Read") == 0 && args_str) {
-            cJSON *args = cJSON_Parse(args_str);
-            const char *file_path =
-                cJSON_GetStringValue(cJSON_GetObjectItem(args, "file_path"));
-            if (file_path) {
-                FILE *file = fopen(file_path, "rb");
-                if (!file) {
-                fprintf(stderr, "Read: cannot open file: %s\n", file_path);
-                } else {
-                fseek(file, 0, SEEK_END);
-                long fsize = ftell(file);
-                fseek(file, 0, SEEK_SET);
-                char *fbuf = malloc(fsize + 1);
-                fread(fbuf, 1, fsize, file);
-                fclose(file);
-                fbuf[fsize] = '\0';
-                cJSON *tool_response = cJSON_CreateObject();
-                cJSON_AddStringToObject(tool_response, "role", "tool");
-                cJSON_AddStringToObject(tool_response, "tool_call_id",
-                                        tool_call_id);
-                cJSON_AddStringToObject(tool_response, "content", fbuf);
-                cJSON_AddItemToArray(conversation_history, tool_response);
-                free(fbuf);
+            int num_calls = cJSON_GetArraySize(tool_calls);
+            for (int i = 0; i < num_calls; i++) 
+            {
+                cJSON *tool_call = cJSON_GetArrayItem(tool_calls, i);
+                cJSON *tool_call_function = cJSON_GetObjectItem(tool_call, "function");
+                const char *function_name = cJSON_GetStringValue(
+                    cJSON_GetObjectItem(tool_call_function, "name"));
+                const char *args_str = cJSON_GetStringValue(
+                    cJSON_GetObjectItem(tool_call_function, "arguments"));
+                const char *tool_call_id =
+                    cJSON_GetStringValue(cJSON_GetObjectItem(tool_call, "id"));
+
+                if (function_name && strcmp(function_name, "Read") == 0 && args_str) 
+                {
+                    cJSON *args = cJSON_Parse(args_str);
+                    const char *file_path =
+                    cJSON_GetStringValue(cJSON_GetObjectItem(args, "file_path"));
+                
+                if (file_path) 
+                {
+                    FILE *file = fopen(file_path, "rb");
+                    
+                    if (!file) 
+                    {
+                        fprintf(stderr, "Read: cannot open file: %s\n", file_path);
+                    } else 
+                    {
+                    fseek(file, 0, SEEK_END);
+                    long fsize = ftell(file);
+                    fseek(file, 0, SEEK_SET);
+                    char *fbuf = malloc(fsize + 1);
+                    fread(fbuf, 1, fsize, file);
+                    fclose(file);
+                    fbuf[fsize] = '\0';
+                    cJSON *tool_response = cJSON_CreateObject();
+                    cJSON_AddStringToObject(tool_response, "role", "tool");
+                    cJSON_AddStringToObject(tool_response, "tool_call_id",
+                                            tool_call_id);
+                    cJSON_AddStringToObject(tool_response, "content", fbuf);
+                    cJSON_AddItemToArray(conversation_history, tool_response);
+                    free(fbuf);
                 }
             }
+        cJSON_Delete(json);
         } else 
         {
-            cJSON *content = cJSON_GetObjectItem(message, "content");
-            printf("%s", cJSON_GetStringValue(content));
+            if (content)
+            {
+                printf("%s", cJSON_GetStringValue(content));
+            }
             cJSON_Delete(json);
             break;
         }
-        cJSON_Delete(json);
-    }
-
-    
-    
- 
-
-    cJSON *choices = cJSON_GetObjectItem(json, "choices");
-    
-    if (!cJSON_IsArray(choices) || cJSON_GetArraySize(choices) == 0) {
-        fprintf(stderr, "no choices in response\n");
-        cJSON_Delete(json);
-        return 1;
-    }
-
-    
-    // check for tool calls
-    cJSON *tool_calls = cJSON_GetObjectItem(message, "tool_calls");
-    
-    if (cJSON_IsArray(tool_calls) && cJSON_GetArraySize(tool_calls) > 0) 
-    {
-        cJSON *tool_call = cJSON_GetArrayItem(tool_calls, 0);
-        cJSON *tool_call_function = cJSON_GetObjectItem(tool_call, "function");
-        const char *function_name = cJSON_GetStringValue(cJSON_GetObjectItem(tool_call_function, "name"));
-        const char *args_str = cJSON_GetStringValue(cJSON_GetObjectItem(tool_call_function, "arguments"));
-        
-        if (function_name && strcmp(function_name, "Read") == 0 && args_str) 
-        {
-            cJSON *args = cJSON_Parse(args_str);
-            const char *file_path = cJSON_GetStringValue(cJSON_GetObjectItem(args, "file_path"));
-            
-            if (file_path) 
-            {
-                FILE *file = fopen(file_path, "rb");
-                
-                if (!file)
-                {
-                    fprintf(stderr, "Read: cannot open file: %s\n", file_path);
-                    cJSON_Delete(args);
-                    cJSON_Delete(json);
-                    return 1;
-                }
-
-                fseek(file, 0, SEEK_END);
-                long fsize = ftell(file);
-                fseek(file, 0, SEEK_SET);
-                char *fbuf = malloc(fsize+1);
-                fread(fbuf, 1, fsize, file);
-                fclose(file);
-                fbuf[fsize] = '\0';
-                printf("%s", fbuf);
-                free(fbuf);
-            }
-
-            cJSON_Delete(args);
-        }
-    } else 
-    {
-        cJSON *content = cJSON_GetObjectItem(message, "content");
-        printf("%s", cJSON_GetStringValue(content));
     }
 
     // You can use print statements as follows for debugging, they'll be visible when running tests.
