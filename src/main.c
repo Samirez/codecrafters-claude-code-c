@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
     cJSON *tools = cJSON_CreateArray();
     cJSON *tool = cJSON_CreateObject();
     cJSON_AddStringToObject(tool, "type", "function");
-
+    
     cJSON *function = cJSON_CreateObject();
     cJSON_AddStringToObject(function, "name", "Read");
     cJSON_AddStringToObject(function, "description", "Read and return the contents of a file");
@@ -82,9 +82,33 @@ int main(int argc, char *argv[]) {
     cJSON_AddItemToObject(tool, "function", function);
     cJSON_AddItemToArray(tools, tool);
 
+    // add write tool to enable LLM to content to files if needed in the future
+    cJSON *write_tool = cJSON_CreateObject();
+    cJSON_AddStringToObject(write_tool, "type", "function");
+    cJSON *write_function = cJSON_CreateObject();
+    cJSON_AddStringToObject(write_function, "name", "Write");
+    cJSON_AddStringToObject(write_function, "description", "Write content to a file");
+    cJSON *write_parameters = cJSON_CreateObject();
+    cJSON_AddStringToObject(write_parameters, "type", "object");
+    cJSON *write_properties = cJSON_CreateObject();
+    cJSON *write_file_path = cJSON_CreateObject();
+    cJSON_AddStringToObject(write_file_path, "type", "string");
+    cJSON_AddStringToObject(write_file_path, "description", "The path to the file to write to");
+    cJSON *content = cJSON_CreateObject();
+    cJSON_AddStringToObject(content, "type", "string");
+    cJSON_AddStringToObject(content, "description", "The content to write to the file");
+    cJSON_AddItemToObject(write_properties, "file_path", write_file_path);
+    cJSON_AddItemToObject(write_properties, "content", content);
+    cJSON *write_required = cJSON_CreateStringArray((const char *[]){"file_path", "content"}, 2);
+    cJSON_AddItemToObject(write_parameters, "properties", write_properties);
+    cJSON_AddItemToObject(write_parameters, "required", write_required);
+    cJSON_AddItemToObject(write_function, "parameters", write_parameters);
+    cJSON_AddItemToObject(write_tool, "function", write_function);
+    cJSON_AddItemToArray(tools, write_tool);
+
     char *body = cJSON_PrintUnformatted(req);
     cJSON_Delete(req);
-
+    
     // create conversation history
     cJSON *conversation_history = cJSON_CreateObject();
     cJSON *history_messages = cJSON_AddArrayToObject(conversation_history, "messages");
