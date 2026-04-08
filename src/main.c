@@ -3,7 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <curl/curl.h>
-#include "cJSON.h"
+#include "cjson/cJSON.h"
 
 struct response_buf {
     char *data;
