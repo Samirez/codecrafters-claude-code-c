@@ -46,6 +46,34 @@ int main(int argc, char *argv[]) {
     cJSON_AddStringToObject(msg, "content", prompt);
     cJSON_AddItemToArray(messages, msg);
 
+    // add tools to request
+    cJSON *tools = cJSON_AddArrayToObject(req, "tools");
+    cJSON *tool = cJSON_CreateObject();
+    cJSON_AddStringToObject(tool, "type", "function");
+
+    cJSON *function = cJSON_CreateObject();
+    cJSON_AddStringToObject(function, "name", "Read");
+    cJSON_AddStringToObject(function, "description", 
+    "Read and return the contents of a file");
+
+    cJSON *parameters = cJSON_CreateObject();
+    cJSON_AddStringToObject(parameters, "type", "ojbect");
+
+    cJSON * properties = cJSON_CreateObject();
+    cJSON *file_path = cJSON_CreateObject();
+    cJSON_AddStringToObject(file_path, "type", "string");
+    cJSON_AddStringToObject(file_path, "description",
+        "The path to the file to read");
+    cJSON_AddItemToObject(properties, "file_path", file_path);
+
+    cJSON *required = cJSON_CreateStringArray((const char*[]){"file_path"}, 1);
+    cJSON_AddItemToObject(parameters, "properties", properties);
+    cJSON_AddItemToObject(parameters, "required", required);
+
+    cJSON_AddItemToObject(function, "parameters", parameters);
+    cJSON_AddItemToObject(tool, "function", function);
+    cJSON_AddItemToArray(tools, tool);
+
     char *body = cJSON_PrintUnformatted(req);
     cJSON_Delete(req);
 
