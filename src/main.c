@@ -98,7 +98,19 @@ int main(int argc, char *argv[]) {
     {
         cJSON *req = cJSON_CreateObject();
         cJSON_AddStringToObject(req, "model", "anthropic/claude-haiku-4.5");
-        cJSON_AddItemReferenceToObject(req, "messages", history_messages);
+        cJSON *req_messages = cJSON_AddArrayToObject(req, "messages");
+        cJSON *msg_history = cJSON_GetObjectItem(conversation_history, "messages");
+
+        if (msg_history && cJSON_IsArray(msg_history)) 
+        {
+            cJSON *child = msg_history->child;
+            while (child)
+            {
+                cJSON_AddItemReferenceToArray(req_messages, child);
+                child = child->next;
+            }
+        }
+
         cJSON *tools_copy = cJSON_Duplicate(tools, 1);
         cJSON_AddItemToObject(req, "tools", tools_copy);
         char *body = cJSON_PrintUnformatted(req);
@@ -170,7 +182,7 @@ int main(int argc, char *argv[]) {
             cJSON_AddItemToObject(assistant_msg, "tool_calls", tool_calls_copy);
         }
 
-        cJSON_AddItemToArray(conversation_history, assistant_msg);
+        cJSON_AddItemToArray(history_messages, assistant_msg);
         if (cJSON_IsArray(tool_calls) && cJSON_GetArraySize(tool_calls) > 0) 
         {
             int num_calls = cJSON_GetArraySize(tool_calls);
@@ -212,23 +224,24 @@ int main(int argc, char *argv[]) {
                     cJSON_AddStringToObject(tool_response, "tool_call_id",
                                             tool_call_id);
                     cJSON_AddStringToObject(tool_response, "content", fbuf);
-                    cJSON_AddItemToArray(conversation_history, tool_response);
+                    cJSON_AddItemToArray(history_messages, tool_response);
                     free(fbuf);
                 }
             }
-        cJSON_Delete(json);
-        } else 
-        {
-            if (content)
-            {
-                printf("%s", cJSON_GetStringValue(content));
-            }
-            cJSON_Delete(json);
-            break;
+            cJSON_Delete(args);
         }
     }
 
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
+        cJSON_Delete(json);
+    } else 
+    {
+        if (content) {
+            printf("%s\n", cJSON_GetStringValue(content));
+        }
+        cJSON_Delete(json);
+        break;
+    }
+
     fprintf(stderr, "Logs from your program will appear here!\n");
     curl_easy_cleanup(curl);
     curl_global_cleanup();
