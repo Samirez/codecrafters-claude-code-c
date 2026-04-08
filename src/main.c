@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     "Read and return the contents of a file");
 
     cJSON *parameters = cJSON_CreateObject();
-    cJSON_AddStringToObject(parameters, "type", "ojbect");
+    cJSON_AddStringToObject(parameters, "type", "object");
 
     cJSON * properties = cJSON_CreateObject();
     cJSON *file_path = cJSON_CreateObject();
@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
         cJSON *tool_call = cJSON_GetArrayItem(tool_calls, 0);
         cJSON *tool_call_function = cJSON_GetObjectItem(tool_call, "function");
         const char *function_name = cJSON_GetStringValue(cJSON_GetObjectItem(tool_call_function, "name"));
-        const char *args_str = cJSON_GetStringValue(cJSON_GetObjectItem(tool_call, "arguments"));
+        const char *args_str = cJSON_GetStringValue(cJSON_GetObjectItem(tool_call_function, "arguments"));
         
         if (function_name && strcmp(function_name, "Read") == 0 && args_str) 
         {
