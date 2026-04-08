@@ -274,8 +274,8 @@ int main(int argc, char *argv[]) {
                             cJSON_AddItemToArray(history_messages, tool_response);
                         }
                     }
+                    cJSON_Delete(args);
                 }
-                cJSON_Delete(tool_call);
             }
 
             cJSON_Delete(json);
