@@ -111,12 +111,14 @@ int main(int argc, char *argv[]) {
 
     cJSON *json = cJSON_Parse(resp.data);
     free(resp.data);
+    
     if (!json) {
         fprintf(stderr, "Failed to parse response JSON\n");
         return 1;
     }
 
     cJSON *choices = cJSON_GetObjectItem(json, "choices");
+    
     if (!cJSON_IsArray(choices) || cJSON_GetArraySize(choices) == 0) {
         fprintf(stderr, "no choices in response\n");
         cJSON_Delete(json);
@@ -125,13 +127,54 @@ int main(int argc, char *argv[]) {
 
     cJSON *first = cJSON_GetArrayItem(choices, 0);
     cJSON *message = cJSON_GetObjectItem(first, "message");
-    cJSON *content = cJSON_GetObjectItem(message, "content");
+    // check for tool calls
+    cJSON *tool_calls = cJSON_GetObjectItem(message, "tool_calls");
+    
+    if (cJSON_IsArray(tool_calls) && cJSON_GetArraySize(tool_calls) > 0) 
+    {
+        cJSON *tool_call = cJSON_GetArrayItem(tool_calls, 0);
+        cJSON *tool_call_function = cJSON_GetObjectItem(tool_call, "function");
+        const char *function_name = cJSON_GetStringValue(cJSON_GetObjectItem(tool_call_function, "name"));
+        const char *args_str = cJSON_GetStringValue(cJSON_GetObjectItem(tool_call, "arguments"));
+        
+        if (function_name && strcmp(function_name, "Read") == 0 && args_str) 
+        {
+            cJSON *args = cJSON_Parse(args_str);
+            const char *file_path = cJSON_GetStringValue(cJSON_GetObjectItem(args, "file_path"));
+            
+            if (file_path) 
+            {
+                FILE *file = fopen(file_path, "rb");
+                
+                if (!file)
+                {
+                    fprintf(stderr, "Read: cannot open file: %s\n", file_path);
+                    cJSON_Delete(args);
+                    cJSON_Delete(json);
+                    return 1;
+                }
+
+                fseek(file, 0, SEEK_END);
+                long fsize = ftell(file);
+                fseek(file, 0, SEEK_SET);
+                char *fbuf = malloc(fsize+1);
+                fread(fbuf, 1, fsize, file);
+                fclose(file);
+                fbuf[fsize] = '\0';
+                printf("%s", fbuf);
+                free(fbuf);
+            }
+
+            cJSON_Delete(args);
+        }
+    } else 
+    {
+        cJSON *content = cJSON_GetObjectItem(message, "content");
+        printf("%s", cJSON_GetStringValue(content));
+    }
 
     // You can use print statements as follows for debugging, they'll be visible when running tests.
     fprintf(stderr, "Logs from your program will appear here!\n");
-
-    // TODO: Uncomment the line below to pass the first stage
-    printf("%s", cJSON_GetStringValue(content));
 
     cJSON_Delete(json);
     return 0;
