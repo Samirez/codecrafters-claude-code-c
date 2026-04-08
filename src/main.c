@@ -127,6 +127,15 @@ int main(int argc, char *argv[]) {
 
     cJSON *first = cJSON_GetArrayItem(choices, 0);
     cJSON *message = cJSON_GetObjectItem(first, "message");
+    cJSON *messages = cJSON_GetObjectItem(json, "messages");
+    cJSON *role = cJSON_GetObjectItem(messages, "role");
+    cJSON *content = cJSON_GetObjectItem(messages, "content");
+    for (int i = 0; i < cJSON_GetArraySize(messages); i++) {
+        cJSON *msg = cJSON_GetArrayItem(messages, i);
+        cJSON *msg_role = cJSON_GetObjectItem(msg, "role");
+        cJSON *msg_content = cJSON_GetObjectItem(msg, "content");
+        printf("%s: %s\n", cJSON_GetStringValue(msg_role), cJSON_GetStringValue(msg_content));
+    }
     // check for tool calls
     cJSON *tool_calls = cJSON_GetObjectItem(message, "tool_calls");
     
