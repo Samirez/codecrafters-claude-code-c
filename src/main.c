@@ -106,6 +106,26 @@ int main(int argc, char *argv[]) {
     cJSON_AddItemToObject(write_tool, "function", write_function);
     cJSON_AddItemToArray(tools, write_tool);
 
+    // add bash tool to enable LLM to execute bash commands if needed in the future
+    cJSON *bash_tool = cJSON_CreateObject();
+    cJSON_AddStringToObject(bash_tool, "type", "function");
+    cJSON *bash_function = cJSON_CreateObject();
+    cJSON_AddStringToObject(bash_function, "name", "Bash");
+    cJSON_AddStringToObject(bash_function, "description", "Execute a shell command");
+    cJSON *bash_parameters = cJSON_CreateObject();
+    cJSON_AddStringToObject(bash_parameters, "type", "object");
+    cJSON *bash_properties = cJSON_CreateObject();
+    cJSON *command = cJSON_CreateObject();
+    cJSON_AddStringToObject(command, "type", "string");
+    cJSON_AddStringToObject(command, "description", "The command to execute");
+    cJSON_AddItemToObject(bash_properties, "command", command);
+    cJSON *bash_required = cJSON_CreateStringArray((const char *[]){"command"}, 1);
+    cJSON_AddItemToObject(bash_parameters, "properties", bash_properties);
+    cJSON_AddItemToObject(bash_parameters, "required", bash_required);
+    cJSON_AddItemToObject(bash_function, "parameters", bash_parameters);
+    cJSON_AddItemToObject(bash_tool, "function", bash_function);
+    cJSON_AddItemToArray(tools, bash_tool);
+
     char *body = cJSON_PrintUnformatted(req);
     cJSON_Delete(req);
     
@@ -275,6 +295,30 @@ int main(int argc, char *argv[]) {
                         }
                     }
                     cJSON_Delete(args);
+                } else if (function_name && strcmp(function_name, "Bash") == 0 && args_str) {
+                    cJSON *args = cJSON_Parse(args_str);
+                    const char *command =
+                        cJSON_GetStringValue(cJSON_GetObjectItem(args, "command"));
+
+                    if (command) {
+                        FILE *fp = popen(command, "r");
+                        if (!fp) {
+                            fprintf(stderr, "Bash: failed to run command: %s\n", command);
+                        } else {
+                            char output[1024];
+                            size_t output_size = fread(output, 1, sizeof(output) - 1, fp);
+                            output[output_size] = '\0';
+                            pclose(fp);
+                            cJSON *tool_response = cJSON_CreateObject();
+                            cJSON_AddStringToObject(tool_response, "role", "tool");
+                            cJSON_AddStringToObject(tool_response, "tool_call_id", tool_call_id);
+                            cJSON_AddStringToObject(tool_response, "content", output);
+                            cJSON_AddItemToArray(history_messages, tool_response);
+                        }
+                    }
+                    cJSON_Delete(args);
+                } else {
+                    fprintf(stderr, "Unknown function call: %s\n", function_name ? function_name : "NULL");
                 }
             }
 
