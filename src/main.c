@@ -3,7 +3,31 @@
 #include <string.h>
 #include <unistd.h>
 #include <curl/curl.h>
+#if __has_include(<cjson/cJSON.h>)
 #include <cjson/cJSON.h>
+#elif __has_include(<cJSON/cJSON.h>)
+#include <cJSON/cJSON.h>
+#elif __has_include(<cJSON.h>)
+#include <cJSON.h>
+#elif __has_include(<cjson.h>)
+#include <cjson.h>
+#else
+typedef struct cJSON cJSON;
+typedef int cJSON_bool;
+
+cJSON *cJSON_CreateObject(void);
+cJSON *cJSON_AddArrayToObject(cJSON *object, const char *name);
+cJSON *cJSON_AddStringToObject(cJSON *object, const char *name, const char *string);
+void cJSON_AddItemToArray(cJSON *array, cJSON *item);
+char *cJSON_PrintUnformatted(const cJSON *item);
+void cJSON_Delete(cJSON *item);
+cJSON *cJSON_Parse(const char *value);
+cJSON *cJSON_GetObjectItem(const cJSON *const object, const char *const string);
+cJSON_bool cJSON_IsArray(const cJSON *const item);
+int cJSON_GetArraySize(const cJSON *array);
+cJSON *cJSON_GetArrayItem(const cJSON *array, int index);
+char *cJSON_GetStringValue(const cJSON *const item);
+#endif
 
 struct response_buf {
     char *data;
